@@ -46,6 +46,11 @@ if [ -n "$BUCKET_NAME" ]; then
   aws s3api delete-bucket --bucket $BUCKET_NAME --region $REGION --profile $AWS_PROFILE 2>/dev/null || true
 fi
 
+# Delete CloudWatch log groups
+echo "Deleting CloudWatch log groups..."
+aws logs delete-log-group --log-group-name /aws/vpc/flowlogs/rook-ceph-lab --region $REGION --profile $AWS_PROFILE 2>/dev/null || true
+aws logs delete-log-group --log-group-name /aws/eks/rook-ceph-lab/cluster --region $REGION --profile $AWS_PROFILE 2>/dev/null || true
+
 # Delete local Terraform state and cache
 echo "Cleaning local Terraform files..."
 rm -rf terraform/.terraform terraform/.terraform.lock.hcl terraform/terraform.tfstate terraform/terraform.tfstate.backup
