@@ -219,6 +219,57 @@ storage:
 - **Container Registry:** S3 backend for Harbor or similar
 - **Development:** Shared storage for development environments
 
+## 🔧 Ceph Admin Tools
+
+### **Using the Toolbox**
+The Ceph toolbox pod provides all admin commands for managing your cluster:
+
+```bash
+# Check cluster status
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- ceph status
+
+# Check OSD status
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- ceph osd status
+
+# Check storage usage
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- ceph df
+
+# List all pools
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- ceph osd pool ls
+
+# List realms
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- radosgw-admin realm list
+```
+
+### **S3 User Management**
+**Important:** Always specify `--rgw-realm`, `--rgw-zonegroup`, and `--rgw-zone` for radosgw-admin commands.
+
+```bash
+# Create S3 user
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- \
+  radosgw-admin user create \
+  --uid=myuser \
+  --display-name="My User" \
+  --rgw-realm=my-store \
+  --rgw-zonegroup=my-store \
+  --rgw-zone=my-store
+
+# List all users
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- \
+  radosgw-admin user list \
+  --rgw-realm=my-store \
+  --rgw-zonegroup=my-store \
+  --rgw-zone=my-store
+
+# Get user info (includes access/secret keys)
+kubectl exec -n rook-ceph deploy/rook-ceph-tools -- \
+  radosgw-admin user info \
+  --uid=myuser \
+  --rgw-realm=my-store \
+  --rgw-zonegroup=my-store \
+  --rgw-zone=my-store
+```
+
 ## 🔍 Troubleshooting
 
 ### **Check Cluster Health**
