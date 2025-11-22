@@ -4,7 +4,7 @@
 karpenter:
   settings:
     clusterName: rook-ceph-lab
-    clusterEndpoint: https://7F81877EE6CB379FB0D32D2F4F15CBD4.gr7.eu-central-1.eks.amazonaws.com
+    clusterEndpoint: https://8CBFAADEE3902244AE956ABB3F1853BE.gr7.eu-central-1.eks.amazonaws.com
     interruptionQueue: rook-ceph-lab
   
   serviceAccount:
