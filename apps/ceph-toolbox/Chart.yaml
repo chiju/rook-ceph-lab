@@ -1,0 +1,4 @@
+apiVersion: v2
+name: ceph-toolbox
+description: Ceph admin toolbox
+version: 1.0.0
