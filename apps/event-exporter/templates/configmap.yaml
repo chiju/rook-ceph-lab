@@ -19,7 +19,7 @@ data:
           url: {{ .Values.lokiUrl }}
           streamLabels:
             app: event-exporter
-            cluster: eks-gitops-lab
+            cluster: rook-ceph-lab
           labels:
             namespace: "{{ `{{ .Namespace }}` }}"
             reason: "{{ `{{ .Reason }}` }}"

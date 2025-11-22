@@ -77,7 +77,7 @@ kind: AccessEntry
 metadata:
   name: eksdeveloper
 spec:
-  clusterName: eks-gitops-lab
+  clusterName: rook-ceph-lab
   principalARN: arn:aws:iam::123:role/.../AWSReservedSSO_EKSDeveloper_*
   kubernetesGroups:
     - developers
@@ -150,7 +150,7 @@ kubectl describe accessentry eksdeveloper -n ack-system
 
 ### Check Actual Access Entries in AWS
 ```bash
-aws eks list-access-entries --cluster-name eks-gitops-lab
+aws eks list-access-entries --cluster-name rook-ceph-lab
 ```
 
 ### Check Sync Status
@@ -192,12 +192,12 @@ kubectl get sa ack-eks-controller -n ack-system -o yaml
 ```bash
 # Delete access entry in AWS
 aws eks delete-access-entry \
-  --cluster-name eks-gitops-lab \
+  --cluster-name rook-ceph-lab \
   --principal-arn arn:aws:iam::123:role/.../AWSReservedSSO_EKSDeveloper_*
 
 # Wait 30 seconds
 # Check if ACK recreated it
-aws eks list-access-entries --cluster-name eks-gitops-lab
+aws eks list-access-entries --cluster-name rook-ceph-lab
 ```
 
 ## Interview Talking Points

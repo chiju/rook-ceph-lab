@@ -1,584 +1,326 @@
-# EKS GitOps Lab
+# Rook Ceph Lab - Distributed Storage Platform
 
-Production-ready Amazon EKS infrastructure with GitOps using ArgoCD, fully automated via GitHub Actions and Terraform.
+A complete Rook Ceph deployment on Amazon EKS demonstrating unified block, file, and object storage from a single distributed system.
 
-## 🚀 From Scratch to Production
+## 🎯 What This Lab Provides
 
-This project demonstrates a **complete GitOps workflow** from zero to a fully automated Kubernetes cluster:
+### **Complete Storage Platform**
+- **Block Storage (RBD)** - Persistent volumes for databases and applications
+- **File Storage (CephFS)** - Shared storage across multiple pods  
+- **Object Storage (RGW)** - S3-compatible API for backups and archives
 
-1. **Bootstrap** → Create S3 backend for Terraform state
-2. **Setup** → Configure IAM role with OIDC authentication
-3. **Deploy** → Push to GitHub, infrastructure deploys automatically
-4. **GitOps** → ArgoCD syncs applications from Git every 30 seconds
-5. **Scale** → Karpenter autoscales nodes, KEDA autoscales pods
-6. **Monitor** → Prometheus + Grafana for metrics, Loki for logs
-7. **Cleanup** → One command destroys everything
-
-**Total setup time:** ~20 minutes (mostly waiting for EKS cluster)
-
-**Manual steps:** Only 3 (bootstrap, OIDC, GitHub App)
-
-**Everything else:** Fully automated via GitHub Actions and ArgoCD
-
-## 🎯 What Gets Deployed
-
-### Infrastructure
-- **EKS Cluster**: Kubernetes 1.34 with managed node groups (2 t3.medium nodes)
-- **Networking**: VPC with public/private subnets across 2 AZs
-- **Storage**: EBS-backed persistent volumes
-- **Autoscaling**: Karpenter for intelligent node scaling
-
-### GitOps & Automation
-- **ArgoCD**: Automated application deployment with app-of-apps pattern
-- **GitHub Actions**: OIDC-based CI/CD pipeline
-- **Terraform**: Infrastructure as Code with S3 remote state
-
-### Applications & Services
-- **nginx**: Web server with KEDA autoscaling
-- **KEDA**: Event-driven pod autoscaling (CPU/Memory triggers)
-- **Karpenter**: Intelligent node autoscaling and bin-packing
-- **Prometheus Stack**: Metrics collection and alerting
-- **Grafana**: Metrics visualization with CloudWatch integration
-- **Loki**: Log aggregation backend
-- **Promtail**: Log collection from all pods
-- **Event Exporter**: Kubernetes events to Loki for Grafana visualization
-
-### AWS Controllers for Kubernetes (ACK)
-- **ACK EKS Controller**: Manages EKS resources via Kubernetes CRDs
-- **Access Entries**: Automatically created from SSO roles
-- **GitOps-native**: Self-healing access management
-
-## 🔐 Security Features
-
-### Authentication & Authorization
-- ✅ **AWS OIDC**: No stored credentials
-- ✅ **Federated Authentication**: GitHub Actions authenticates via OIDC
-- ✅ **IAM Identity Center**: SSO with multiple users and permission sets
-- ✅ **ACK EKS Controller**: Automatic AccessEntry creation from SSO roles
-- ✅ **RBAC**: Role-based access control with namespace isolation
-- ✅ **IAM Roles**: Least privilege access for all services
-- ✅ **IRSA**: IAM Roles for Service Accounts (Karpenter, Grafana)
-- ✅ **Encrypted State**: S3 backend with encryption at rest
-
-### Data Protection
-- ✅ **No Secrets in Code**: All sensitive data in GitHub Secrets
-- ✅ **Branch Protection**: PRs required via workflow concurrency
-- ✅ **State Locking**: Native S3 locking prevents concurrent modifications
-
-### Security Scanning
-- ✅ **Checkov**: IaC security scanning in CI/CD pipeline
-- ✅ **Terraform Validation**: Format and validation checks
-- ℹ️ **Note**: Checkov chosen for deep Terraform analysis
-
-## 📋 Prerequisites
-
-- AWS CLI configured (`aws configure`)
-- GitHub CLI (`gh auth login`)
-- Terraform (v1.13.5+)
-- kubectl
-- Git
-
-## 🚀 Quick Start (3 Steps)
-
-### 1. Bootstrap Backend
-
-```bash
-./scripts/bootstrap-backend.sh
-```
-
-**What it does:**
-- Creates S3 bucket for Terraform state (with versioning & encryption)
-- Uses native S3 locking (no DynamoDB needed)
-- **Automatically updates** `terraform/backend.tf` with bucket name
-
-**Output:** 
-```
-✅ Backend created successfully!
-✅ Updated terraform/backend.tf automatically!
-```
-
-### 2. Setup OIDC Access
-
-```bash
-./scripts/setup-oidc-access.sh
-```
-
-**What it does:**
-- Creates GitHub OIDC provider in AWS (if not exists)
-- Creates IAM role for GitHub Actions
-- Configures federated credentials
-- **Automatically adds 3 GitHub secrets**
-
-**Output:**
-```
-✅ OIDC setup complete!
-✅ GitHub secrets added!
-```
-
-### 3. Create GitHub App
-
-**Go to:** https://github.com/settings/apps/new
-
-**Settings:**
-- Name: `ArgoCD-EKS-GitOps`
-- Homepage: `https://github.com/YOUR_USERNAME/eks-gitops-lab`
-- Webhook: ✅ **Uncheck "Active"**
-- Repository permissions:
-  - Contents: `Read-only`
-  - Metadata: `Read-only` (mandatory)
-- Install: `Only on this account`
-
-**After creation:**
-1. Generate private key (downloads `.pem` file)
-2. Note App ID (shown on page)
-3. Install app → Select `eks-gitops-lab` repo
-4. Note Installation ID (from URL: `.../installations/XXXXXXXX`)
-
-**Store secrets:**
-```bash
-cd ~/Downloads
-gh secret set ARGOCD_APP_PRIVATE_KEY < argocd-eks-gitops.*.private-key.pem
-gh secret set ARGOCD_APP_ID -b "YOUR_APP_ID"
-gh secret set ARGOCD_APP_INSTALLATION_ID -b "YOUR_INSTALLATION_ID"
-```
-
-### 4. Deploy
-
-```bash
-git add .
-git commit -m "Initial deployment"
-git push origin main
-```
-
-**That's it!** GitHub Actions will:
-1. Run terraform plan (security scan)
-2. Deploy EKS cluster (~15 minutes)
-3. Install ArgoCD
-4. Update app configs with cluster info
-5. Deploy all applications automatically
+### **Architecture Patterns**
+- **GitOps Deployment** - Infrastructure as Code with ArgoCD
+- **Kubernetes Native** - Rook operator for lifecycle management
+- **Scalable Design** - Ready for multi-tenant applications
+- **Production Ready** - Proper dependency management and health checks
 
 ## 🏗️ Architecture
 
-### Infrastructure Flow
-
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         AWS Cloud                           │
+│                    EKS Cluster (3 Nodes)                   │
+├─────────────────────────────────────────────────────────────┤
+│                   Rook Ceph Platform                       │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐          │
+│  │    MON      │ │    MGR      │ │    OSD      │          │
+│  │ (Monitor)   │ │ (Manager)   │ │ (Storage)   │          │
+│  └─────────────┘ └─────────────┘ └─────────────┘          │
 │                                                             │
-│  ┌───────────────────────────────────────────────────────┐ │
-│  │                    VPC (10.0.0.0/16)                  │ │
-│  │                                                       │ │
-│  │  ┌──────────────────┐      ┌──────────────────┐     │ │
-│  │  │  Public Subnet   │      │  Public Subnet   │     │ │
-│  │  │  10.0.1.0/24     │      │  10.0.2.0/24     │     │ │
-│  │  │  (AZ-1)          │      │  (AZ-2)          │     │ │
-│  │  │  - NAT Gateway   │      │                  │     │ │
-│  │  └──────────────────┘      └──────────────────┘     │ │
-│  │           │                         │                │ │
-│  │  ┌──────────────────┐      ┌──────────────────┐     │ │
-│  │  │ Private Subnet   │      │ Private Subnet   │     │ │
-│  │  │ 10.0.37.0/24     │      │ 10.0.60.0/24     │     │ │
-│  │  │ (AZ-1)           │      │ (AZ-2)           │     │ │
-│  │  │ ┌──────────────┐ │      │ ┌──────────────┐ │     │ │
-│  │  │ │ EKS Nodes    │ │      │ │ EKS Nodes    │ │     │ │
-│  │  │ │ t3.medium    │ │      │ │ t3.medium    │ │     │ │
-│  │  │ └──────────────┘ │      │ └──────────────┘ │     │ │
-│  │  └──────────────────┘      └──────────────────┘     │ │
-│  └───────────────────────────────────────────────────────┘ │
+│  ┌─────────────┐ ┌─────────────┐                          │
+│  │    MDS      │ │    RGW      │                          │
+│  │ (Metadata)  │ │ (S3 Gateway)│                          │
+│  └─────────────┘ └─────────────┘                          │
 └─────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+┌───────▼──────┐    ┌────────▼──────┐    ┌────────▼──────┐
+│ Block Storage│    │Object Storage │    │ File Storage  │
+│    (RBD)     │    │     (S3)      │    │   (CephFS)    │
+│              │    │               │    │               │
+│ StorageClass:│    │ StorageClass: │    │ StorageClass: │
+│rook-ceph-    │    │rook-ceph-     │    │  rook-cephfs  │
+│block         │    │bucket         │    │               │
+└──────────────┘    └───────────────┘    └───────────────┘
 ```
 
-### GitOps Flow
+## 🚀 Quick Start
 
-```
-Developer → PR → Plan → Review → Merge → Apply → Update Configs → ArgoCD Syncs
-```
+### **Prerequisites**
+- AWS CLI configured
+- kubectl installed
+- Terraform installed
+- GitHub CLI (gh) installed
 
-### Application Deployment
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                        ArgoCD                                │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  core-apps (App of Apps)                                    │
-│  ├─ Monitors: argocd-apps/ directory                       │
-│  ├─ Auto-sync: Every 30 seconds                            │
-│  └─ Auto-prune: Removes deleted apps                       │
-│                                                              │
-│  Applications                                                │
-│  ├─ nginx (with KEDA autoscaling)                          │
-│  ├─ keda (pod autoscaling controller)                      │
-│  ├─ karpenter (node autoscaling)                           │
-│  ├─ kube-prometheus-stack (monitoring)                     │
-│  ├─ loki (log aggregation)                                 │
-│  └─ promtail (log collection)                              │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## 📁 Project Structure
-
-```
-.
-├── .github/workflows/
-│   ├── terraform.yml           # Main CI/CD pipeline
-│   ├── terraform-destroy.yml   # Infrastructure cleanup
-│   └── update-app-values.yml   # Update configs from Terraform
-├── apps/                       # Helm charts for applications
-│   ├── nginx/
-│   ├── keda/
-│   ├── karpenter/
-│   ├── kube-prometheus-stack/
-│   ├── loki/
-│   ├── promtail/
-│   ├── event-exporter/        # Kubernetes events to Loki
-│   ├── ack-eks-controller/    # ACK EKS controller
-│   ├── access-entries/        # EKS access entries via ACK
-│   └── rbac-setup/            # RBAC roles and bindings
-├── argocd-apps/               # ArgoCD application definitions
-│   ├── nginx.yaml
-│   ├── keda.yaml
-│   ├── karpenter.yaml
-│   ├── kube-prometheus-stack.yaml
-│   ├── loki.yaml
-│   ├── promtail.yaml
-│   ├── event-exporter.yaml
-│   ├── ack-eks-controller.yaml
-│   ├── access-entries.yaml
-│   └── rbac-setup.yaml
-├── terraform/                 # Terraform infrastructure
-│   ├── modules/
-│   │   ├── aks/              # EKS cluster configuration
-│   │   ├── argocd/           # ArgoCD Helm deployment
-│   │   └── vpc/              # Virtual network
-│   ├── backend.tf            # Terraform backend configuration
-│   ├── main.tf               # Main Terraform configuration
-│   ├── variables.tf          # Variable definitions
-│   ├── outputs.tf            # Output definitions
-│   └── provider.tf           # Provider configuration
-├── scripts/                   # Automation scripts
-│   ├── bootstrap-backend.sh
-│   ├── setup-oidc-access.sh
-│   └── cleanup-all.sh
-└── README.md
-```
-
-## 🎮 Accessing Services
-
-### EKS Cluster
-
+### **1. Clone Repository**
 ```bash
-# Get credentials
-aws eks update-kubeconfig --name eks-gitops-lab --region eu-central-1
-
-# Check cluster
-kubectl get nodes
-kubectl get pods --all-namespaces
+git clone https://github.com/chiju/rook-ceph-lab.git
+cd rook-ceph-lab
 ```
 
-### ArgoCD UI
-
+### **2. Setup Scripts**
 ```bash
-# Port forward
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+# Create S3 backend for Terraform state
+./scripts/bootstrap-backend.sh
 
-# Get password
-kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
-
-# Open browser
-open https://localhost:8080
-# Username: admin
-# Password: (from above command)
+# Setup GitHub OIDC authentication
+./scripts/setup-oidc-access.sh
 ```
 
-### Grafana
+### **3. Create GitHub App (One-time Setup)**
 
+**Create a dedicated GitHub App for this Rook Ceph lab:**
+
+**Go to:** https://github.com/settings/apps/new
+
+**Required Settings:**
+- **Name:** `ArgoCD-Rook-Ceph-Lab` (dedicated to this repo)
+- **Homepage:** `https://github.com/chiju/rook-ceph-lab`
+- **Webhook:** ✅ **Uncheck "Active"** (we don't need webhooks)
+- **Repository permissions:**
+  - **Contents:** `Read-only` (ArgoCD needs to read your repo)
+  - **Metadata:** `Read-only` (automatically required)
+- **Where can this app be installed:** `Only on this account`
+
+**After creation:**
+1. **Generate private key** → Downloads `.pem` file
+2. **Note App ID** → Shown on the app page (e.g., `2336285`)
+3. **Install app** → Click "Install App" → Select **ONLY** `rook-ceph-lab` repository
+4. **Note Installation ID** → From URL: `github.com/settings/installations/XXXXXXXX` (e.g., `96060885`)
+
+**Store GitHub App secrets:**
 ```bash
-# Port forward
-kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80
-
-# Get password
-kubectl get secret kube-prometheus-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 -d
-
-# Open browser
-open http://localhost:3000
-# Username: admin
-# Password: (from above command)
+cd ~/Downloads
+gh secret set ARGOCD_APP_PRIVATE_KEY < argocd-rook-ceph-lab.*.private-key.pem
+gh secret set ARGOCD_APP_ID -b "2336285"
+gh secret set ARGOCD_APP_INSTALLATION_ID -b "96060885"
 ```
 
-### Prometheus
+**✅ Dedicated GitHub App configured! This keeps the Rook Ceph lab isolated.**
 
+### **4. Deploy**
 ```bash
-kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9090:9090
-open http://localhost:9090
+git add .
+git commit -m "Initial Rook Ceph deployment"
+git push origin main
 ```
 
-### AWS SSO Access
+**That's it!** GitHub Actions will deploy the complete Rook Ceph platform.
 
+### **5. Verify Deployment**
 ```bash
-# Configure SSO profile
-aws configure sso
-# SSO start URL: https://d-99675f4fc7.awsapps.com/start
-# SSO Region: eu-central-1
-# Account: 432801802107
-# Role: EKSDeveloper / EKSDevOps / EKSReadOnly
+# Update kubeconfig
+aws eks update-kubeconfig --region eu-central-1 --name rook-ceph-lab
 
-# Login
-aws sso login --profile <profile-name>
+# Check ArgoCD applications
+kubectl get applications -n argocd
 
-# Access EKS
-aws eks update-kubeconfig --name eks-gitops-lab --region eu-central-1 --profile <profile-name>
-kubectl get pods -n dev  # Developer access
-kubectl get nodes        # DevOps access
+# Check storage classes
+kubectl get storageclass | grep ceph
+
+# Check test results
+kubectl logs -l app=ceph-comprehensive-test --tail=10
 ```
 
-**User Roles:**
-- **EKSDeveloper**: Full access to `dev` namespace only
-- **EKSDevOps**: Full cluster access (all namespaces, nodes)
-- **EKSReadOnly**: Read-only access to all namespaces
+## 📦 ArgoCD Applications
+
+| **Application** | **Purpose** | **Wave** |
+|-----------------|-------------|----------|
+| `rook-operator` | Installs Ceph operator | 0 |
+| `ceph-cluster` | Creates storage cluster (MON/MGR/OSD) | 1 |
+| `ceph-block-storage` | Provides block storage interface | 2 |
+| `ceph-object-storage` | Provides S3-compatible storage | 3 |
+| `ceph-file-storage` | Provides shared file storage | 3 |
+| `ceph-test-apps` | Validates all storage types | 4 |
+
+## 💾 Storage Usage Examples
+
+### **Block Storage (ReadWriteOnce)**
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: database-storage
+spec:
+  storageClassName: rook-ceph-block
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+### **File Storage (ReadWriteMany)**
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-storage
+spec:
+  storageClassName: rook-cephfs
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 5Gi
+```
+
+### **Object Storage (S3 Buckets)**
+```yaml
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: backup-bucket
+spec:
+  storageClassName: rook-ceph-bucket
+```
+
+## 🔧 Production Scaling
+
+### **Current Lab Configuration**
+- **MON:** 1 instance (minimal for testing)
+- **MGR:** 1 instance (minimal for testing)
+- **OSD:** 1 instance (minimal for testing)
+- **Storage:** ~25Gi total (EBS backend)
+- **Replication:** 1x (no redundancy)
+
+### **Production Configuration**
+```yaml
+# Recommended production setup
+mon:
+  count: 3  # Odd number for quorum
+mgr:
+  count: 2  # Active/standby
+storage:
+  storageClassDeviceSets:
+  - count: 6  # Multiple OSDs per node
+    portable: true
+    resources:
+      requests:
+        storage: 100Gi  # Larger storage volumes
+```
+
+### **High Availability Features**
+- **Multiple MONs** for consensus and fault tolerance
+- **Multiple MGRs** for manager failover  
+- **Multiple OSDs** with configurable replication
+- **Multi-AZ deployment** for disaster recovery
+
+## 🎯 Use Cases
+
+### **Application Storage**
+- **Databases:** PostgreSQL, MySQL with persistent block storage
+- **Web Applications:** Shared file storage for uploads and configs
+- **Backup Systems:** S3-compatible storage for automated backups
+- **CI/CD:** Shared build artifacts and container registries
+
+### **Platform Services**
+- **Monitoring:** Persistent storage for Prometheus metrics
+- **Logging:** Object storage for log archives
+- **Container Registry:** S3 backend for Harbor or similar
+- **Development:** Shared storage for development environments
+
+## 🔍 Troubleshooting
+
+### **Check Cluster Health**
+```bash
+# Overall cluster status
+kubectl get cephcluster -n rook-ceph
+
+# Component status
+kubectl get pods -n rook-ceph
+
+# Storage classes
+kubectl get storageclass | grep ceph
+```
+
+### **Debug Storage Issues**
+```bash
+# Check PVC status
+kubectl get pvc
+
+# Check events
+kubectl get events --sort-by=.metadata.creationTimestamp
+
+# Ceph cluster details
+kubectl describe cephcluster rook-ceph -n rook-ceph
+```
+
+### **Test Results**
+```bash
+# Check comprehensive test results
+kubectl logs -l app=ceph-comprehensive-test --tail=15
+
+# Expected output:
+# ✅ Block storage: X lines
+# ✅ File storage: X lines (shared)
+# ✅ Object storage: S3 API working
+```
 
 ## 🧹 Cleanup
 
-### Complete Cleanup
-
+### **Complete Cleanup**
 ```bash
+# Destroy everything
 ./scripts/cleanup-all.sh
 ```
 
-This removes:
-- ✅ IAM role
-- ✅ S3 bucket and all objects
-- ✅ GitHub secrets
-- ✅ Local Terraform state files
+**This removes:**
+- ✅ EKS cluster and all resources
+- ✅ S3 backend bucket
+- ✅ IAM roles and policies
+- ✅ GitHub secrets (except GitHub App secrets)
+- ✅ Local Terraform state
 
-### Partial Cleanup (Keep Backend)
-
+### **Partial Cleanup (Keep Backend)**
 ```bash
-# Destroy infrastructure only (manual trigger required)
+# Destroy infrastructure only
 gh workflow run terraform-destroy.yml -f confirm=destroy
 ```
 
-## 🐛 Troubleshooting
+## 📚 Technical Details
 
-### Issue: Workflow fails with permission error
+### **Ceph Components**
+- **RADOS:** Reliable Autonomic Distributed Object Store (foundation)
+- **RBD:** RADOS Block Device (block storage interface)
+- **CephFS:** Ceph File System (POSIX-compliant shared filesystem)
+- **RGW:** RADOS Gateway (S3/Swift-compatible object storage)
 
-**Solution:** The IAM role needs proper permissions. Check:
-```bash
-aws iam get-role --role-name GitHubActionsEKSRole
-```
+### **Rook Integration**
+- **Custom Resources:** CephCluster, CephBlockPool, CephFilesystem, CephObjectStore
+- **CSI Drivers:** Dynamic provisioning for Kubernetes
+- **Lifecycle Management:** Automated deployment, scaling, and updates
 
-### Issue: ArgoCD not syncing apps
+### **Storage Architecture**
+- **Unified Backend:** Single RADOS cluster serves all storage types
+- **Dynamic Provisioning:** Kubernetes-native storage allocation
+- **Multi-Protocol:** Block, file, and object access to same data pool
 
-**Possible causes:**
-1. GitHub token expired
-2. Repository URL incorrect
-3. Branch name mismatch
+## 🌟 Key Benefits
 
-**Solution:**
-```bash
-# Check ArgoCD repo secret
-kubectl get secret argocd-repo -n argocd -o yaml
+### **Unified Platform**
+- Single storage system providing multiple interfaces
+- Consistent management and monitoring
+- Reduced operational complexity
 
-# Update if needed
-kubectl delete secret argocd-repo -n argocd
-# Re-run update-app-values workflow
-gh workflow run update-app-values.yml
-```
+### **Cloud Native**
+- Kubernetes-native deployment and management
+- GitOps-compatible configuration
+- Container-optimized architecture
 
-### Issue: Karpenter not scaling nodes
+### **Cost Effective**
+- Open source with no licensing costs
+- Commodity hardware support
+- Efficient resource utilization
 
-**Solution:** Check if Karpenter has correct cluster info:
-```bash
-# Manually trigger update workflow
-gh workflow run update-app-values.yml
+---
 
-# Verify Karpenter config
-kubectl get ec2nodeclass -o yaml
-```
+## 🚀 Next Steps
 
-### Issue: Pods pending due to insufficient resources
+This lab provides a foundation for understanding distributed storage systems. To scale for production:
 
-**Solution:** Karpenter will automatically provision nodes. Check:
-```bash
-# Check Karpenter logs
-kubectl logs -n karpenter -l app.kubernetes.io/name=karpenter
+1. **Increase replication** for data redundancy
+2. **Add monitoring** with Prometheus and Grafana
+3. **Implement backup** strategies for disaster recovery
+4. **Tune performance** based on workload requirements
 
-# Check pending pods
-kubectl get pods --all-namespaces --field-selector=status.phase=Pending
-```
-
-## 📊 Monitoring & Observability
-
-### Metrics (Prometheus + Grafana)
-
-- **Node metrics**: CPU, memory, disk, network
-- **Pod metrics**: Resource usage per pod
-- **Cluster metrics**: Overall cluster health
-- **CloudWatch integration**: Grafana can query CloudWatch
-
-### Logs (Loki + Promtail)
-
-- **Centralized logging**: All pod logs in one place
-- **Query language**: LogQL for powerful log queries
-- **Retention**: Configurable log retention policies
-- **Integration**: Grafana dashboards for log visualization
-
-### Kubernetes Events (Event Exporter)
-
-- **Event collection**: All K8s events sent to Loki
-- **Grafana visualization**: View events in Grafana Explore
-- **Query**: `{app="event-exporter"}` or `{type="Warning"}`
-- **Filtering**: By namespace, reason, type, kind, name
-- **Pod metrics**: Resource usage per pod
-- **Cluster metrics**: Overall cluster health
-- **CloudWatch integration**: Grafana can query CloudWatch
-
-### Logs (Loki + Promtail)
-
-- **Centralized logging**: All pod logs in one place
-- **Query language**: LogQL for powerful log queries
-- **Retention**: Configurable log retention policies
-- **Integration**: Grafana dashboards for log visualization
-
-### Autoscaling
-
-**KEDA (Pod Autoscaling):**
-- CPU-based: Scale on CPU utilization
-- Memory-based: Scale on memory usage
-- Custom metrics: Scale on any Prometheus metric
-
-**Karpenter (Node Autoscaling):**
-- Intelligent provisioning: Right-sized nodes
-- Bin-packing: Efficient resource utilization
-- Fast scaling: Nodes ready in ~2 minutes
-- Cost optimization: Spot instances support
-
-## 💰 Cost Optimization
-
-### Current Setup (2 nodes)
-
-- **EKS Control Plane**: ~$73/month
-- **EC2**: 2 x t3.medium (~$60/month)
-- **NAT Gateway**: ~$32/month
-- **EBS Volumes**: ~$10/month
-- **Total**: ~$175/month
-
-### Cost Saving Tips
-
-1. **Use Karpenter with Spot** - Save up to 90% on compute
-2. **Scale down** when not in use
-3. **Use smaller node sizes** for dev/test
-4. **Destroy infrastructure** when not needed
-
-```bash
-# Destroy when not in use
-gh workflow run terraform-destroy.yml -f confirm=destroy
-
-# Redeploy when needed
-git commit --allow-empty -m "Redeploy" && git push
-```
-
-## 🔒 Security Best Practices
-
-### Implemented
-
-- ✅ No credentials in code or version control
-- ✅ Federated authentication (OIDC)
-- ✅ Encrypted Terraform state
-- ✅ IAM roles with least privilege
-- ✅ IRSA for pod-level permissions
-- ✅ Secrets stored in GitHub Secrets
-- ✅ Workflow concurrency control
-
-### Recommended for Production
-
-**Security Enhancements:**
-- 🔲 **External Secrets Operator** - Sync secrets from AWS Secrets Manager
-- 🔲 **Private Cluster Endpoint** - Restrict API server access
-- 🔲 **Network Policies** - Control pod-to-pod traffic
-- 🔲 **Pod Security Standards** - Enforce security policies
-- 🔲 **AWS Config** - Compliance and governance
-- 🔲 **KMS Encryption** - Encrypt Kubernetes secrets at rest
-
-**Infrastructure Improvements:**
-- 🔲 **Separate Node Groups** - System vs user workloads
-- 🔲 **Production Instance Types** - t3.large or larger
-- 🔲 **Resource Limits** - CPU/memory limits on all pods
-- 🔲 **Velero Backups** - Disaster recovery
-- 🔲 **Multi-region** - High availability
-
-**Operational:**
-- 🔲 **Cost Alerts** - AWS Budgets and alerts
-- 🔲 **Terraform Workspaces** - Dev/staging/prod environments
-- 🔲 **Runbooks** - Incident response procedures
-- 🔲 **SLO/SLA Monitoring** - Service level objectives
-
-## 📚 What's Automated
-
-- ✅ S3 backend creation
-- ✅ Backend configuration auto-update
-- ✅ IAM role creation and configuration
-- ✅ OIDC provider setup
-- ✅ GitHub secrets (3 of 5 automated)
-- ✅ EKS cluster deployment
-- ✅ ArgoCD installation and configuration
-- ✅ Application deployment via GitOps
-- ✅ Karpenter configuration with cluster info
-- ✅ Grafana CloudWatch integration
-- ✅ KEDA autoscaling setup
-- ✅ Monitoring stack deployment
-
-## ✋ What's Manual
-
-- ❌ Add `GIT_USERNAME` secret (one-time)
-- ❌ Add `ARGOCD_GITHUB_TOKEN` secret (one-time)
-
-## 🎓 Learning Resources
-
-- [Amazon EKS Documentation](https://docs.aws.amazon.com/eks/)
-- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
-- [Karpenter Documentation](https://karpenter.sh/)
-- [KEDA Documentation](https://keda.sh/)
-- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-- [GitOps Principles](https://opengitops.dev/)
-
-## 📝 License
-
-MIT
-
-## 🤝 Contributing
-
-This is a learning lab project. Feel free to fork and adapt for your needs!
-
-## ⚠️ Important Notes
-
-### Current Setup
-- **Purpose**: Learning and portfolio demonstration
-- **Environment**: Lab/Development
-- **Instance Type**: t3.medium (cost-optimized)
-- **Security**: Basic (OIDC, IRSA, encrypted state)
-
-### For Production Use
-This setup provides a **solid foundation** but requires these enhancements:
-
-**Must Have:**
-- Private cluster endpoint
-- Network policies
-- Resource limits on all pods
-- External Secrets Operator with AWS Secrets Manager
-- Velero backups
-- Production instance types (t3.large+)
-- KMS encryption for Kubernetes secrets
-
-**Should Have:**
-- Separate node groups (system/user)
-- Cost alerts and budgets
-- Multi-environment setup (dev/staging/prod)
-- Comprehensive monitoring and alerting
-- Disaster recovery plan
-
-**Cost Considerations:**
-- Current setup: ~$175/month
-- Production setup: ~$400-600/month (with redundancy)
-- Remember to destroy resources when not in use
+**A complete distributed storage platform ready for real-world applications.** 🎯

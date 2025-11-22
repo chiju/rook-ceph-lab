@@ -3,10 +3,10 @@
 
 karpenter:
   settings:
-    clusterName: eks-gitops-lab
+    clusterName: rook-ceph-lab
     clusterEndpoint: https://7F81877EE6CB379FB0D32D2F4F15CBD4.gr7.eu-central-1.eks.amazonaws.com
-    interruptionQueue: eks-gitops-lab
+    interruptionQueue: rook-ceph-lab
   
   serviceAccount:
     annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::432801802107:role/KarpenterControllerRole-eks-gitops-lab
+      eks.amazonaws.com/role-arn: arn:aws:iam::432801802107:role/KarpenterControllerRole-rook-ceph-lab

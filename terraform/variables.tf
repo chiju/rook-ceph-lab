@@ -31,7 +31,7 @@ variable "user_email_domain" {
 variable "git_repo_url" {
   description = "Git repository URL for ArgoCD"
   type        = string
-  default     = "https://github.com/YOUR_USERNAME/eks-gitops-lab.git"
+  default     = "https://github.com/chiju/rook-ceph-lab.git"
 }
 
 variable "git_target_revision" {
@@ -48,7 +48,7 @@ variable "github_actions_role_arn" {
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
-  default     = "eks-gitops-lab"
+  default     = "rook-ceph-lab"
 }
 
 variable "region" {

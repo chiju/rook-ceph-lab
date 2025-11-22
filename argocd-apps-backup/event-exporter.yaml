@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/chiju/eks-gitops-lab.git
+    repoURL: https://github.com/chiju/rook-ceph-lab.git
     targetRevision: main
     path: apps/event-exporter
   destination:

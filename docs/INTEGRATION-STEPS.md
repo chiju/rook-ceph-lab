@@ -78,7 +78,7 @@ aws sso login --profile alice-admin
 
 ### **Access EKS**
 ```bash
-aws eks update-kubeconfig --name eks-gitops-lab --profile alice-admin --region eu-central-1
+aws eks update-kubeconfig --name rook-ceph-lab --profile alice-admin --region eu-central-1
 kubectl get nodes
 ```
 

@@ -70,7 +70,7 @@ Repeat for each user (bob-devops, diana-viewer)
 ```bash
 # Alice (Developer)
 aws sso login --profile alice-dev
-aws eks update-kubeconfig --name eks-gitops-lab --profile alice-dev --region eu-central-1
+aws eks update-kubeconfig --name rook-ceph-lab --profile alice-dev --region eu-central-1
 
 kubectl get pods -n dev        # ✅ Works
 kubectl delete pod xxx -n dev  # ✅ Works
@@ -78,7 +78,7 @@ kubectl get nodes              # ❌ Forbidden
 
 # Bob (DevOps)
 aws sso login --profile bob-devops
-aws eks update-kubeconfig --name eks-gitops-lab --profile bob-devops --region eu-central-1
+aws eks update-kubeconfig --name rook-ceph-lab --profile bob-devops --region eu-central-1
 
 kubectl get pods -n dev        # ✅ Works
 kubectl get pods -n staging    # ✅ Works
@@ -87,7 +87,7 @@ kubectl delete node xxx        # ❌ Forbidden
 
 # Diana (Viewer)
 aws sso login --profile diana-viewer
-aws eks update-kubeconfig --name eks-gitops-lab --profile diana-viewer --region eu-central-1
+aws eks update-kubeconfig --name rook-ceph-lab --profile diana-viewer --region eu-central-1
 
 kubectl get pods -A            # ✅ Works
 kubectl delete pod xxx         # ❌ Forbidden
@@ -181,7 +181,7 @@ git push
 
 ### "Access denied" in kubectl
 - Verify RBAC deployed: `kubectl get rolebinding -n dev`
-- Check access entry: `aws eks list-access-entries --cluster-name eks-gitops-lab`
+- Check access entry: `aws eks list-access-entries --cluster-name rook-ceph-lab`
 
 ### "Email not received"
 - Check spam folder

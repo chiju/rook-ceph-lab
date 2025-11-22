@@ -54,7 +54,7 @@ cat > $BACKEND_FILE <<EOF
 terraform {
   backend "s3" {
     bucket       = "$BUCKET_NAME"
-    key          = "eks-gitops-lab.tfstate"
+    key          = "rook-ceph-lab.tfstate"
     region       = "$REGION"
     encrypt      = true
     use_lockfile = true
