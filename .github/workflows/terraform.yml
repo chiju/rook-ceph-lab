@@ -244,7 +244,7 @@ jobs:
     - name: Post-deployment Tests
       run: |
         # Get cluster credentials
-        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name eks-gitops-lab
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name rook-ceph-lab
         
         # Wait for nodes
         kubectl wait --for=condition=Ready nodes --all --timeout=300s || true
@@ -258,7 +258,7 @@ jobs:
       if: success()
       run: |
         echo "🎉 Infrastructure deployed successfully!"
-        CLUSTER_ENDPOINT=$(aws eks describe-cluster --name eks-gitops-lab --region ${{ env.AWS_REGION }} --query 'cluster.endpoint' --output text)
+        CLUSTER_ENDPOINT=$(aws eks describe-cluster --name rook-ceph-lab --region ${{ env.AWS_REGION }} --query 'cluster.endpoint' --output text)
         echo "EKS Cluster Endpoint: $CLUSTER_ENDPOINT"
 
   update-app-values:
