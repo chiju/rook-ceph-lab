@@ -1,0 +1,83 @@
+apiVersion: ceph.rook.io/v1
+kind: CephCluster
+metadata:
+  name: rook-ceph
+  namespace: rook-ceph
+spec:
+  cephVersion:
+    image: quay.io/ceph/ceph:v19.2.3
+    allowUnsupported: false
+  dataDirHostPath: /var/lib/rook
+  skipUpgradeChecks: false
+  continueUpgradeAfterChecksEvenIfNotHealthy: false
+  waitTimeoutForHealthyOSDInMinutes: 10
+  
+  mon:
+    count: 1
+    allowMultiplePerNode: false
+    volumeClaimTemplate:
+      spec:
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 10Gi
+  
+  mgr:
+    count: 1
+    allowMultiplePerNode: false
+    modules:
+      - name: pg_autoscaler
+        enabled: true
+  
+  dashboard:
+    enabled: true
+    ssl: true
+  
+  crashCollector:
+    disable: false
+  
+  logCollector:
+    enabled: true
+    periodicity: daily
+    maxLogSize: 500M
+  
+  # cleanupPolicy removed - only needed for deletion
+  
+  storage:
+    useAllNodes: false
+    useAllDevices: false
+    allowOsdCrushWeightUpdate: true
+    storageClassDeviceSets:
+    - name: set1
+      count: 1
+      portable: true
+      tuneDeviceClass: true
+      encrypted: false
+      volumeClaimTemplates:
+      - metadata:
+          name: data
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: gp3
+          volumeMode: Block
+          resources:
+            requests:
+              storage: 10Gi
+      placement:
+        all:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: karpenter.sh/nodepool
+                  operator: DoesNotExist
+  
+  priorityClassNames:
+    mon: system-node-critical
+    osd: system-node-critical
+    mgr: system-cluster-critical
+  
+  disruptionManagement:
+    managePodBudgets: true
+    osdMaintenanceTimeout: 30
+    pgHealthCheckTimeout: 0

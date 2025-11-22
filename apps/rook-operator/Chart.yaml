@@ -1,0 +1,10 @@
+apiVersion: v2
+name: rook-operator
+description: Rook Ceph Operator
+type: application
+version: 0.1.0
+appVersion: "v1.18.7"
+dependencies:
+  - name: rook-ceph
+    version: "v1.18.7"
+    repository: "https://charts.rook.io/release"

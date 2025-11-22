@@ -1,0 +1,18 @@
+# Kubeconfig (sensitive)
+eks-lab-argocd-kubeconfig.yaml
+*.kubeconfig
+*.yaml.bak
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl.backup
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+apps/*/charts/

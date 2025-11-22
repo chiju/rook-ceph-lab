@@ -1,0 +1,120 @@
+# Test all 3 Ceph storage types
+---
+# 1. Block Storage Test (RWO)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ceph-block-test-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: rook-ceph-block
+---
+# 2. File Storage Test (RWX - Shared)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ceph-file-test-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 3Gi
+  storageClassName: rook-cephfs
+---
+# 3. Object Storage Test (Bucket)
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: ceph-object-test-bucket
+  namespace: default
+spec:
+  generateBucketName: test-bucket
+  storageClassName: rook-ceph-bucket
+---
+# Test App - Tests all 3 storage types
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ceph-comprehensive-test
+  namespace: default
+spec:
+  replicas: 1  # Single replica to avoid RWO block storage conflicts
+  selector:
+    matchLabels:
+      app: ceph-comprehensive-test
+  template:
+    metadata:
+      labels:
+        app: ceph-comprehensive-test
+    spec:
+      containers:
+      - name: storage-tester
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          # Test script
+          while true; do
+            echo "=== $(date) ==="
+            
+            # Test 1: Block Storage (unique per pod)
+            echo "Block test from $(hostname)" >> /block-data/block-test.log
+            echo "✅ Block storage: $(wc -l < /block-data/block-test.log) lines"
+            
+            # Test 2: File Storage (shared between pods)
+            echo "Shared test from $(hostname)" >> /shared-data/shared-test.log
+            echo "✅ File storage: $(wc -l < /shared-data/shared-test.log) lines (shared)"
+            
+            # Test 3: Object Storage (S3 API via wget)
+            if [ -f /var/run/secrets/rook.io/object-user-ceph-object-test-bucket/AWS_ACCESS_KEY_ID ] && [ -f /var/run/configmaps/rook.io/object-bucket-ceph-object-test-bucket/BUCKET_HOST ]; then
+              export AWS_ACCESS_KEY_ID=$(cat /var/run/secrets/rook.io/object-user-ceph-object-test-bucket/AWS_ACCESS_KEY_ID)
+              export S3_ENDPOINT=$(cat /var/run/configmaps/rook.io/object-bucket-ceph-object-test-bucket/BUCKET_HOST):$(cat /var/run/configmaps/rook.io/object-bucket-ceph-object-test-bucket/BUCKET_PORT)
+              
+              # Simple S3 API test - list buckets
+              RESPONSE=$(wget -q -O - "http://$S3_ENDPOINT/" 2>/dev/null | grep -o "ListAllMyBucketsResult" | head -1)
+              if [ "$RESPONSE" = "ListAllMyBucketsResult" ]; then
+                echo "✅ Object storage: S3 API working (got S3 XML response)"
+              else
+                echo "❌ Object storage: S3 API failed"
+              fi
+            else
+              echo "⏳ Object storage: Waiting for credentials..."
+            fi
+            
+            echo "---"
+            sleep 60
+          done
+        volumeMounts:
+        - name: block-storage
+          mountPath: /block-data
+        - name: file-storage
+          mountPath: /shared-data
+        - name: object-credentials
+          mountPath: /var/run/secrets/rook.io/object-user-ceph-object-test-bucket
+          readOnly: true
+        - name: object-config
+          mountPath: /var/run/configmaps/rook.io/object-bucket-ceph-object-test-bucket
+          readOnly: true
+      volumes:
+      - name: block-storage
+        persistentVolumeClaim:
+          claimName: ceph-block-test-pvc
+      - name: file-storage
+        persistentVolumeClaim:
+          claimName: ceph-file-test-pvc
+      - name: object-credentials
+        secret:
+          secretName: ceph-object-test-bucket
+          optional: true
+      - name: object-config
+        configMap:
+          name: ceph-object-test-bucket
+          optional: true

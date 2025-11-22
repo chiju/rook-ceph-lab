@@ -1,0 +1,37 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStore
+metadata:
+  name: my-store
+  namespace: rook-ceph
+spec:
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 1
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 1
+  preservePoolsOnDelete: false
+  gateway:
+    port: 80
+    instances: 1
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rook-ceph-bucket
+provisioner: rook-ceph.ceph.rook.io/bucket
+reclaimPolicy: Delete
+parameters:
+  objectStoreName: my-store
+  objectStoreNamespace: rook-ceph
+---
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: ceph-bucket-test
+  namespace: default
+spec:
+  generateBucketName: ceph-bkt
+  storageClassName: rook-ceph-bucket

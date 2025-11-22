@@ -1,0 +1,17 @@
+eks-chart:
+  aws:
+    region: eu-central-1
+  
+  serviceAccount:
+    create: true
+    name: ack-eks-controller
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::432801802107:role/eks-gitops-lab-ack-eks-controller-role" # Will be updated by workflow
+  
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

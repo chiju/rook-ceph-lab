@@ -1,0 +1,35 @@
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "1.29.3"
+  pullPolicy: IfNotPresent
+
+# Add nginx exporter for monitoring
+nginxExporter:
+  enabled: true
+  image:
+    repository: nginx/nginx-prometheus-exporter
+    tag: "0.10.0"
+  port: 9113
+
+service:
+  type: ClusterIP
+  port: 80
+  # Add metrics port
+  metricsPort: 9113
+
+# Enable monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi

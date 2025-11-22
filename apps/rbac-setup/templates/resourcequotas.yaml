@@ -1,0 +1,13 @@
+{{- range $name, $config := .Values.namespaces }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ $name }}-quota
+  namespace: {{ $name }}
+spec:
+  hard:
+    {{- range $key, $value := $config.resourceQuota }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+{{- end }}

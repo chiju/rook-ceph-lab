@@ -1,0 +1,24 @@
+# RBAC Setup Configuration
+
+namespaces:
+  dev:
+    labels:
+      environment: development
+      team: engineering
+    resourceQuota:
+      requests.cpu: "10"
+      requests.memory: 20Gi
+      limits.cpu: "20"
+      limits.memory: 40Gi
+      pods: "50"
+  
+  staging:
+    labels:
+      environment: staging
+      team: engineering
+    resourceQuota:
+      requests.cpu: "20"
+      requests.memory: 40Gi
+      limits.cpu: "40"
+      limits.memory: 80Gi
+      pods: "100"

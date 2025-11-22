@@ -1,0 +1,14 @@
+image:
+  repository: ghcr.io/resmoio/kubernetes-event-exporter
+  tag: v1.7
+  pullPolicy: IfNotPresent
+
+lokiUrl: http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi

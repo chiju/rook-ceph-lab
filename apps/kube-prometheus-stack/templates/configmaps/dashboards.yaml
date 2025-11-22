@@ -1,0 +1,3 @@
+{{- include "dashboard.configmap" (dict "name" "aws-cost-dashboard" "file" "dashboards/aws-cost-dashboard.json" "root" .) }}
+{{- include "dashboard.configmap" (dict "name" "eks-prometheus-dashboard" "file" "dashboards/eks-prometheus-dashboard.json" "root" .) }}
+{{- include "dashboard.configmap" (dict "name" "loki-events-dashboard" "file" "dashboards/loki-events-dashboard.json" "root" .) }}

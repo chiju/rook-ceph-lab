@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: access-entries
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/chiju/eks-gitops-lab.git
+    targetRevision: main
+    path: apps/access-entries
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ack-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

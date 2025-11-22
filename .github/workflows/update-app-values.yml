@@ -1,0 +1,133 @@
+name: Update App Values from Terraform
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  update-values:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      
+      - name: Get Terraform Outputs
+        id: terraform
+        run: |
+          cd terraform
+          terraform init
+          echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+          echo "cluster_endpoint=$(terraform output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
+          echo "karpenter_role_arn=$(terraform output -raw karpenter_controller_role_arn)" >> $GITHUB_OUTPUT
+          echo "karpenter_node_role=$(terraform output -raw karpenter_node_role_name)" >> $GITHUB_OUTPUT
+          echo "interruption_queue=$(terraform output -raw karpenter_sqs_queue_name)" >> $GITHUB_OUTPUT
+          echo "grafana_role_arn=$(terraform output -raw grafana_cloudwatch_role_arn)" >> $GITHUB_OUTPUT
+          echo "ack_role_arn=$(terraform output -raw ack_eks_controller_role_arn)" >> $GITHUB_OUTPUT
+      
+      - name: Update Karpenter values.yaml
+        run: |
+          cat > apps/karpenter/values.yaml <<EOF
+          # Auto-generated from Terraform outputs by GitHub Actions
+          # Do not edit manually - changes will be overwritten
+          
+          karpenter:
+            settings:
+              clusterName: ${{ steps.terraform.outputs.cluster_name }}
+              clusterEndpoint: ${{ steps.terraform.outputs.cluster_endpoint }}
+              interruptionQueue: ${{ steps.terraform.outputs.interruption_queue }}
+            
+            serviceAccount:
+              annotations:
+                eks.amazonaws.com/role-arn: ${{ steps.terraform.outputs.karpenter_role_arn }}
+          EOF
+      
+      - name: Update EC2NodeClass
+        run: |
+          cat > apps/karpenter/templates/ec2nodeclass.yaml <<EOF
+          apiVersion: karpenter.k8s.aws/v1
+          kind: EC2NodeClass
+          metadata:
+            name: default
+          spec:
+            role: ${{ steps.terraform.outputs.karpenter_node_role }}
+            amiSelectorTerms:
+              - alias: al2023@latest
+            subnetSelectorTerms:
+              - tags:
+                  karpenter.sh/discovery: ${{ steps.terraform.outputs.cluster_name }}
+            securityGroupSelectorTerms:
+              - tags:
+                  karpenter.sh/discovery: ${{ steps.terraform.outputs.cluster_name }}
+          EOF
+      
+      - name: Update Grafana ServiceAccount
+        run: |
+          sed -i "s|GRAFANA_ROLE_ARN_PLACEHOLDER|${{ steps.terraform.outputs.grafana_role_arn }}|g" apps/kube-prometheus-stack/values.yaml
+      
+      - name: Update ACK EKS Controller ServiceAccount
+        run: |
+          sed -i "s|eks.amazonaws.com/role-arn: \"\"|eks.amazonaws.com/role-arn: \"${{ steps.terraform.outputs.ack_role_arn }}\"|g" apps/ack-eks-controller/values.yaml
+      
+      - name: Wait for SSO Roles and Update AccessEntry Values
+        run: |
+          echo "Waiting 3 minutes for AWS to provision SSO roles..."
+          # sleep 180  # Commented out - not needed for Rook Ceph lab
+          
+          echo "Querying SSO role ARNs..."
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          
+          # Get SSO role ARNs
+          DEVELOPER_ROLE=$(aws iam list-roles --path-prefix /aws-reserved/sso.amazonaws.com/ --query "Roles[?contains(RoleName, 'EKSDeveloper')].Arn" --output text | head -1)
+          DEVOPS_ROLE=$(aws iam list-roles --path-prefix /aws-reserved/sso.amazonaws.com/ --query "Roles[?contains(RoleName, 'EKSDevOps')].Arn" --output text | head -1)
+          READONLY_ROLE=$(aws iam list-roles --path-prefix /aws-reserved/sso.amazonaws.com/ --query "Roles[?contains(RoleName, 'EKSReadOnly')].Arn" --output text | head -1)
+          
+          echo "Found roles:"
+          echo "Developer: $DEVELOPER_ROLE"
+          echo "DevOps: $DEVOPS_ROLE"
+          echo "ReadOnly: $READONLY_ROLE"
+          
+          # Update values.yaml with actual ARNs
+          cat > apps/access-entries/values.yaml <<EOF
+          # Auto-generated from AWS SSO roles by GitHub Actions
+          # Do not edit manually - changes will be overwritten
+          
+          clusterName: ${{ steps.terraform.outputs.cluster_name }}
+          
+          ssoRoles:
+            EKSDeveloper: "${DEVELOPER_ROLE}"
+            EKSDevOps: "${DEVOPS_ROLE}"
+            EKSReadOnly: "${READONLY_ROLE}"
+          
+          # Map to K8s groups
+          kubernetesGroups:
+            EKSDeveloper:
+              - developers
+            EKSDevOps:
+              - devops
+            EKSReadOnly:
+              - viewers
+          EOF
+      
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/karpenter/values.yaml apps/karpenter/templates/ec2nodeclass.yaml apps/kube-prometheus-stack/values.yaml apps/ack-eks-controller/values.yaml apps/access-entries/values.yaml
+          git diff --staged --quiet || git commit -m "chore: Update app values from Terraform outputs [skip ci]"
+          git push

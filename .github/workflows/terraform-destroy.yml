@@ -1,0 +1,71 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to confirm'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'destroy'
+    environment: production
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+      
+      - name: Cleanup Karpenter Nodes
+        continue-on-error: true
+        run: |
+          echo "Terminating Karpenter-created nodes..."
+          KARPENTER_INSTANCES=$(aws ec2 describe-instances \
+            --region eu-central-1 \
+            --filters "Name=tag:karpenter.sh/nodepool,Values=*" "Name=instance-state-name,Values=running,pending" \
+            --query 'Reservations[].Instances[].InstanceId' \
+            --output text)
+          
+          if [ -n "$KARPENTER_INSTANCES" ]; then
+            echo "Found Karpenter instances: $KARPENTER_INSTANCES"
+            aws ec2 terminate-instances --instance-ids $KARPENTER_INSTANCES --region eu-central-1
+            echo "Waiting 30s for instances to terminate..."
+            sleep 30
+          else
+            echo "No Karpenter instances found"
+          fi
+      
+      - name: Terraform Destroy
+        working-directory: terraform
+        run: |
+          terraform destroy -auto-approve \
+            -var="github_app_id=${{ secrets.ARGOCD_APP_ID }}" \
+            -var="github_app_installation_id=${{ secrets.ARGOCD_APP_INSTALLATION_ID }}" \
+            -var="github_app_private_key=${{ secrets.ARGOCD_APP_PRIVATE_KEY }}" \
+            -var="git_repo_url=${{ secrets.GIT_REPO_URL }}" \
+            -var="allowed_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -var="github_actions_role_arn=${{ secrets.AWS_ROLE_ARN }}"
+      
+      - name: Summary
+        run: |
+          echo "### ⚠️ Infrastructure Destroyed" >> $GITHUB_STEP_SUMMARY
+          echo "All AWS resources have been destroyed." >> $GITHUB_STEP_SUMMARY

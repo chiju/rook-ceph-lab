@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: nginx
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  - port: {{ .Values.service.port }}
+    targetPort: 80
+    protocol: TCP
+    name: http
+  {{- if .Values.nginxExporter.enabled }}
+  - port: {{ .Values.service.metricsPort }}
+    targetPort: {{ .Values.nginxExporter.port }}
+    protocol: TCP
+    name: metrics
+  {{- end }}
+  selector:
+    app: {{ .Chart.Name }}

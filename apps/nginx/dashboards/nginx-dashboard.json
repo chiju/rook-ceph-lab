@@ -1,0 +1,283 @@
+{
+  "id": null,
+  "uid": null,
+  "title": "nginx Metrics",
+  "tags": ["nginx", "web-server", "monitoring"],
+  "timezone": "browser",
+  "schemaVersion": 30,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "nginx Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "max(nginx_up)",
+          "legendFormat": "nginx Up"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          },
+          "mappings": [
+            {"options": {"0": {"text": "DOWN"}}, "type": "value"},
+            {"options": {"1": {"text": "UP"}}, "type": "value"}
+          ]
+        }
+      },
+      "gridPos": {"h": 8, "w": 4, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "Active Connections",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_active)",
+          "legendFormat": "Active"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 4, "x": 4, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Total Requests",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(nginx_http_requests_total)",
+          "legendFormat": "Total Requests"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 4, "x": 8, "y": 0}
+    },
+    {
+      "id": 4,
+      "title": "Requests per Second",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(nginx_http_requests_total[5m]))",
+          "legendFormat": "RPS"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 4, "x": 12, "y": 0}
+    },
+    {
+      "id": 5,
+      "title": "Connection Efficiency",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_handled) / sum(nginx_connections_accepted) * 100",
+          "legendFormat": "Handled %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 95},
+              {"color": "green", "value": 99}
+            ]
+          },
+          "unit": "percent",
+          "max": 100,
+          "min": 0
+        }
+      },
+      "gridPos": {"h": 8, "w": 4, "x": 16, "y": 0}
+    },
+    {
+      "id": 6,
+      "title": "Dropped Connections",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_accepted) - sum(nginx_connections_handled)",
+          "legendFormat": "Dropped"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 4, "x": 20, "y": 0}
+    },
+    {
+      "id": 7,
+      "title": "Request Rate Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(nginx_http_requests_total[5m]))",
+          "legendFormat": "Requests/sec"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "id": 8,
+      "title": "Active Connections Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_active)",
+          "legendFormat": "Active Connections"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+    },
+    {
+      "id": 9,
+      "title": "Connection States",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_reading)",
+          "legendFormat": "Reading"
+        },
+        {
+          "expr": "sum(nginx_connections_writing)",
+          "legendFormat": "Writing"
+        },
+        {
+          "expr": "sum(nginx_connections_waiting)",
+          "legendFormat": "Waiting"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+    },
+    {
+      "id": 10,
+      "title": "Connection Totals Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_accepted)",
+          "legendFormat": "Accepted"
+        },
+        {
+          "expr": "sum(nginx_connections_handled)",
+          "legendFormat": "Handled"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+    },
+    {
+      "id": 11,
+      "title": "Connection Distribution",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "sum(nginx_connections_reading)",
+          "legendFormat": "Reading"
+        },
+        {
+          "expr": "sum(nginx_connections_writing)", 
+          "legendFormat": "Writing"
+        },
+        {
+          "expr": "sum(nginx_connections_waiting)",
+          "legendFormat": "Waiting"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 24}
+    },
+    {
+      "id": 12,
+      "title": "nginx Exporter Info",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "nginxexporter_build_info",
+          "legendFormat": "Build Info",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 24}
+    }
+  ]
+}

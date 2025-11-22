@@ -1,0 +1,18 @@
+# Auto-generated from AWS SSO roles by GitHub Actions
+# Do not edit manually - changes will be overwritten
+
+clusterName: eks-gitops-lab
+
+ssoRoles:
+  EKSDeveloper: ""
+  EKSDevOps: ""
+  EKSReadOnly: ""
+
+# Map to K8s groups
+kubernetesGroups:
+  EKSDeveloper:
+    - developers
+  EKSDevOps:
+    - devops
+  EKSReadOnly:
+    - viewers

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: event-exporter
+description: Kubernetes Event Exporter to Loki
+type: application
+version: 1.0.0
+appVersion: "1.7.0"

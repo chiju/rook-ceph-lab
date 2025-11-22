@@ -1,0 +1,5 @@
+apiVersion: v2
+name: nginx
+description: Simple nginx app
+version: 1.0.0
+appVersion: "1.25"

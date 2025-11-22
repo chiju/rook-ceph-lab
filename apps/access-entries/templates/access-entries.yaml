@@ -1,0 +1,16 @@
+{{- range $permissionSet, $roleArn := .Values.ssoRoles }}
+---
+apiVersion: eks.services.k8s.aws/v1alpha1
+kind: AccessEntry
+metadata:
+  name: {{ $permissionSet | lower }}
+  namespace: ack-system
+spec:
+  clusterName: {{ $.Values.clusterName }}
+  principalARN: {{ $roleArn }}
+  kubernetesGroups: {{ index $.Values.kubernetesGroups $permissionSet | toYaml | nindent 4 }}
+  type: STANDARD
+  tags:
+    ManagedBy: ArgoCD
+    PermissionSet: {{ $permissionSet }}
+{{- end }}

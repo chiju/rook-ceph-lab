@@ -1,0 +1,20 @@
+rook-ceph:
+  # Basic configuration for learning setup
+  logLevel: INFO
+  
+  # Enable discovery daemon to find storage devices
+  enableDiscoveryDaemon: true
+  
+  # CSI configuration
+  csi:
+    enableRbdDriver: true
+    enableCephfsDriver: true
+    logLevel: 1
+  
+  # Resources for operator
+  resources:
+    limits:
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"

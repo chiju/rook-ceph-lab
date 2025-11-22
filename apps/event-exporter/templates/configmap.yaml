@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-exporter-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    logLevel: info
+    logFormat: json
+    maxEventAgeSeconds: 60
+    throttlePeriod: 0
+    route:
+      routes:
+        - match:
+            - receiver: loki
+    receivers:
+      - name: loki
+        loki:
+          url: {{ .Values.lokiUrl }}
+          streamLabels:
+            app: event-exporter
+            cluster: eks-gitops-lab
+          labels:
+            namespace: "{{ `{{ .Namespace }}` }}"
+            reason: "{{ `{{ .Reason }}` }}"
+            type: "{{ `{{ .Type }}` }}"
+            kind: "{{ `{{ .InvolvedObject.Kind }}` }}"
+            name: "{{ `{{ .InvolvedObject.Name }}` }}"

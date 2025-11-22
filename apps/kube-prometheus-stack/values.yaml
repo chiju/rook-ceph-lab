@@ -1,0 +1,50 @@
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      # Allow Prometheus to discover ServiceMonitors in all namespaces
+      serviceMonitorNamespaceSelector: {}
+      serviceMonitorSelector:
+        matchLabels:
+          release: monitoring
+  grafana:
+    enabled: true
+    adminPassword: admin
+    grafana.ini:
+      dashboards:
+        min_refresh_interval: 1s
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: ""
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://loki-gateway.loki.svc.cluster.local
+        access: proxy
+        isDefault: false
+      - name: CloudWatch
+        type: cloudwatch
+        access: proxy
+        jsonData:
+          defaultRegion: eu-central-1
+          authType: default
+        isDefault: false
+      - name: CloudWatch Logs
+        type: cloudwatch
+        access: proxy
+        jsonData:
+          defaultRegion: eu-central-1
+          authType: default
+          logGroups:
+            - name: "/aws/eks/eks-lab-argocd/cluster"
+            - name: "/aws/vpc/flowlogs/eks-lab-argocd"
+        isDefault: false

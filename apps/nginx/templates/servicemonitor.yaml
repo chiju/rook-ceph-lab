@@ -1,0 +1,19 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled .Values.nginxExporter.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Chart.Name }}-metrics
+  namespace: nginx
+  labels:
+    app: {{ .Chart.Name }}
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: {{ .Values.monitoring.serviceMonitor.interval }}
+    scrapeTimeout: 10s
+{{- end }}

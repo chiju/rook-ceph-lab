@@ -1,0 +1,12 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  nginx-dashboard.json: |
+{{ .Files.Get "dashboards/nginx-dashboard.json" | indent 4 }}
+{{- end }}
