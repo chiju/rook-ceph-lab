@@ -19,7 +19,12 @@ spec:
       containers:
         - name: rook-ceph-tools
           image: rook/ceph:v1.18.7
-          command: ["/bin/bash", "-c", "sleep infinity"]
+          command:
+            - /bin/bash
+            - -c
+            - |
+              cp /etc/rook/mon-endpoints /etc/ceph/mon-endpoints
+              sleep infinity
           imagePullPolicy: IfNotPresent
           env:
             - name: ROOK_CEPH_USERNAME
